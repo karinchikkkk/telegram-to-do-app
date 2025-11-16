@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Мои задачи</h1>
+            <div class="user-info" id="userInfo"></div>
+        </header>
+        
+        <div class="add-todo">
+            <input type="text" id="todoInput" placeholder="Добавить новую задачу...">
+            <button onclick="addTodo()">➕</button>
+        </div>
+        
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterTodos('all')">Все</button>
+            <button class="filter-btn" onclick="filterTodos('active')">Активные</button>
+            <button class="filter-btn" onclick="filterTodos('completed')">Выполненные</button>
+        </div>
+        
+        <ul class="todo-list" id="todoList"></ul>
+        
+        <div class="stats">
+            <span id="todoCount">Задач: 0</span>
+            <button onclick="clearCompleted()" class="clear-btn">Очистить выполненные</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
