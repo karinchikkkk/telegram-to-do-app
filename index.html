@@ -17,67 +17,64 @@
         </header>
         
         <div class="theme-selector">
-            <button class="theme-btn" onclick="changeTheme('default')">🌞</button>
-            <button class="theme-btn" onclick="changeTheme('dark')">🌙</button>
-            <button class="theme-btn" onclick="changeTheme('blue')">🔵</button>
-            <button class="theme-btn" onclick="changeTheme('green')">🟢</button>
+            <button class="theme-btn active" onclick="app.changeTheme('default')">🌞</button>
+            <button class="theme-btn" onclick="app.changeTheme('dark')">🌙</button>
+            <button class="theme-btn" onclick="app.changeTheme('blue')">🔵</button>
         </div>
         
         <div class="add-todo">
-            <input type="text" id="todoInput" placeholder="Добавить новую задачу...">
-            <button onclick="addTodo()">➕</button>
+            <input type="text" id="todoInput" placeholder="Добавить новую задачу..." 
+                   aria-label="Новая задача" maxlength="200">
+            <button onclick="addTodo()" aria-label="Добавить задачу">➕</button>
         </div>
         
         <div class="category-selector">
-            <button class="category-btn active" data-category="general" onclick="setActiveCategory('general')">
+            <button class="category-btn active" onclick="app.setCategory('general')">
                 📁 Общие
             </button>
-            <button class="category-btn" data-category="work" onclick="setActiveCategory('work')">
+            <button class="category-btn" onclick="app.setCategory('work')">
                 💼 Работа
             </button>
-            <button class="category-btn" data-category="personal" onclick="setActiveCategory('personal')">
+            <button class="category-btn" onclick="app.setCategory('personal')">
                 🏠 Личные
-            </button>
-            <button class="category-btn" data-category="shopping" onclick="setActiveCategory('shopping')">
-                🛒 Покупки
             </button>
         </div>
         
         <div class="filters">
-            <button class="filter-btn active" onclick="filterTodos('all')">Все</button>
-            <button class="filter-btn" onclick="filterTodos('active')">Активные</button>
-            <button class="filter-btn" onclick="filterTodos('completed')">Выполненные</button>
-            <button class="stats-btn" onclick="showStats()">📊 Статистика</button>
+            <button class="filter-btn active" onclick="app.setFilter('all')">Все</button>
+            <button class="filter-btn" onclick="app.setFilter('active')">Активные</button>
+            <button class="filter-btn" onclick="app.setFilter('completed')">Выполненные</button>
+            <button class="stats-btn" onclick="app.showStats()">📊 Статистика</button>
         </div>
         
-        <ul class="todo-list" id="todoList"></ul>
+        <ul class="todo-list" id="todoList" aria-label="Список задач"></ul>
         
         <div class="stats">
             <span id="todoCount">Задач: 0</span>
-            <button onclick="clearCompleted()" class="clear-btn">Очистить выполненные</button>
+            <button onclick="app.clearCompleted()" class="clear-btn">Очистить выполненные</button>
         </div>
     </div>
 
     <!-- Модальное окно статистики -->
     <div id="statsModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeStats()">&times;</span>
+            <span class="close" onclick="app.closeStats()">&times;</span>
             <h2>📈 Статистика продуктивности</h2>
             
             <div class="stats-tabs">
-                <button class="tab-btn active" onclick="openTab('daily')">День</button>
-                <button class="tab-btn" onclick="openTab('weekly')">Неделя</button>
-                <button class="tab-btn" onclick="openTab('monthly')">Месяц</button>
+                <button class="tab-btn active" onclick="app.openTab('daily')">День</button>
+                <button class="tab-btn" onclick="app.openTab('weekly')">Неделя</button>
+                <button class="tab-btn" onclick="app.openTab('monthly')">Месяц</button>
             </div>
             
             <div id="daily" class="tab-content active">
-                <canvas id="dailyChart"></canvas>
+                <canvas id="dailyChart" aria-label="График продуктивности за неделю"></canvas>
             </div>
             <div id="weekly" class="tab-content">
-                <canvas id="weeklyChart"></canvas>
+                <canvas id="weeklyChart" aria-label="График времени выполнения"></canvas>
             </div>
             <div id="monthly" class="tab-content">
-                <canvas id="monthlyChart"></canvas>
+                <canvas id="monthlyChart" aria-label="График выполненных задач за месяц"></canvas>
             </div>
             
             <div class="stats-summary">

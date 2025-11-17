@@ -1,327 +1,350 @@
-// Инициализация Telegram Web App
-const tg = window.Telegram.WebApp;
-
-// Расширяем на весь экран
-tg.expand();
-tg.enableClosingConfirmation();
-
-// Инициализация приложения
-let todos = JSON.parse(localStorage.getItem('todos')) || [];
-let currentFilter = 'all';
-let currentCategory = 'general';
-let currentTheme = localStorage.getItem('currentTheme') || 'default';
-
-// Применяем сохраненную тему
-document.body.setAttribute('data-theme', currentTheme);
-
-// Показываем информацию о пользователе
-const user = tg.initDataUnsafe?.user;
-if (user) {
-    const userInfo = document.getElementById('userInfo');
-    userInfo.textContent = `Привет, ${user.first_name || 'Пользователь'}!`;
-}
-
-// Загружаем задачи
-renderTodos();
-
-// Функции Todo
-function addTodo() {
-    const input = document.getElementById('todoInput');
-    const text = input.value.trim();
-    
-    if (text) {
-        const todo = {
-            id: Date.now(),
-            text: text,
-            completed: false,
-            createdAt: new Date().toISOString(),
-            category: currentCategory
+class TodoApp {
+    constructor() {
+        this.config = {
+            ANIMATION_DURATION: 300,
+            DEBOUNCE_DELAY: 16,
+            MAX_TODO_LENGTH: 200
         };
         
-        todos.unshift(todo);
-        saveTodos();
-        renderTodos();
-        input.value = '';
+        this.todos = this.loadTodos();
+        this.currentFilter = 'all';
+        this.currentCategory = 'general';
+        this.currentTheme = this.loadTheme();
+        this.charts = {};
         
-        // Трекинг в аналитике
-        analytics.trackCompletion(todo);
-        
-        // Вибрация для feedback
-        if (tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('light');
+        this.init();
+    }
+
+    init() {
+        this.setupTelegram();
+        this.applyTheme(this.currentTheme);
+        this.bindEvents();
+        this.render();
+    }
+
+    setupTelegram() {
+        if (window.Telegram?.WebApp) {
+            this.tg = Telegram.WebApp;
+            this.tg.expand();
+            this.setupUserInfo();
         }
     }
-}
 
-function toggleTodo(id) {
-    const todo = todos.find(t => t.id === id);
-    if (todo) {
+    setupUserInfo() {
+        const user = this.tg?.initDataUnsafe?.user;
+        const userInfo = document.getElementById('userInfo');
+        if (user && userInfo) {
+            userInfo.textContent = `Привет, ${user.first_name || 'Пользователь'}!`;
+        }
+    }
+
+    bindEvents() {
+        const todoInput = document.getElementById('todoInput');
+        if (todoInput) {
+            todoInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addTodoFromInput();
+                }
+            });
+        }
+
+        // Close modal on outside click
+        const modal = document.getElementById('statsModal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeStats();
+                }
+            });
+        }
+    }
+
+    // Theme Management
+    loadTheme() {
+        return localStorage.getItem('currentTheme') || 'default';
+    }
+
+    changeTheme(theme) {
+        this.currentTheme = theme;
+        this.applyTheme(theme);
+        localStorage.setItem('currentTheme', theme);
+        this.updateActiveThemeButton(theme);
+        this.triggerHapticFeedback('soft');
+    }
+
+    applyTheme(theme) {
+        document.body.setAttribute('data-theme', theme);
+    }
+
+    updateActiveThemeButton(theme) {
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event?.target.classList.add('active');
+    }
+
+    // Todo Management
+    loadTodos() {
+        try {
+            return JSON.parse(localStorage.getItem('todos')) || [];
+        } catch (error) {
+            console.error('Error loading todos:', error);
+            return [];
+        }
+    }
+
+    saveTodos() {
+        try {
+            localStorage.setItem('todos', JSON.stringify(this.todos));
+        } catch (error) {
+            console.error('Error saving todos:', error);
+            this.showError('Не удалось сохранить задачи');
+        }
+    }
+
+    addTodo(text) {
+        if (!this.validateTodo(text)) return false;
+
+        const todo = {
+            id: Date.now(),
+            text: text.trim(),
+            completed: false,
+            createdAt: new Date().toISOString(),
+            category: this.currentCategory
+        };
+
+        this.todos.unshift(todo);
+        this.saveTodos();
+        this.render();
+        this.triggerHapticFeedback('light');
+        return true;
+    }
+
+    addTodoFromInput() {
+        const input = document.getElementById('todoInput');
+        if (this.addTodo(input.value)) {
+            input.value = '';
+        }
+    }
+
+    validateTodo(text) {
+        const trimmed = text.trim();
+        
+        if (!trimmed) {
+            this.showError('Введите текст задачи');
+            return false;
+        }
+        
+        if (trimmed.length > this.config.MAX_TODO_LENGTH) {
+            this.showError(`Задача слишком длинная (максимум ${this.config.MAX_TODO_LENGTH} символов)`);
+            return false;
+        }
+        
+        return true;
+    }
+
+    toggleTodo(id) {
+        const todo = this.todos.find(t => t.id === id);
+        if (!todo) return;
+
         const todoElement = document.querySelector(`[data-todo-id="${id}"]`);
         if (todoElement) {
             todoElement.classList.add('completing');
         }
-        
+
         setTimeout(() => {
             todo.completed = !todo.completed;
             
             if (todo.completed) {
                 todo.completedAt = new Date().toISOString();
-                // Отправляем уведомление о выполнении
-                sendCompletionNotification(todo.text);
+                this.sendCompletionNotification(todo.text);
             } else {
                 todo.completedAt = null;
             }
-            
-            // Трекинг в аналитике
-            analytics.trackCompletion(todo);
-            
-            saveTodos();
-            renderTodos();
-            
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
-        }, 300);
+
+            this.analyticsTrackCompletion(todo);
+            this.saveTodos();
+            this.render();
+            this.triggerHapticFeedback('light');
+        }, this.config.ANIMATION_DURATION / 2);
     }
-}
 
-function deleteTodo(id) {
-    const todoElement = document.querySelector(`[data-todo-id="${id}"]`);
-    if (todoElement) {
-        todoElement.classList.add('removing');
-        
-        setTimeout(() => {
-            todos = todos.filter(t => t.id !== id);
-            saveTodos();
-            renderTodos();
+    deleteTodo(id) {
+        const todoElement = document.querySelector(`[data-todo-id="${id}"]`);
+        if (todoElement) {
+            todoElement.classList.add('removing');
             
-            // Вибрация
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
-        }, 400);
-    }
-}
-
-function filterTodos(filter) {
-    currentFilter = filter;
-    
-    // Обновляем активные кнопки
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    renderTodos();
-}
-
-function setActiveCategory(category) {
-    currentCategory = category;
-    
-    // Обновляем активные кнопки категорий
-    document.querySelectorAll('.category-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Анимация переключения категорий
-    const todoList = document.getElementById('todoList');
-    todoList.style.opacity = '0.5';
-    todoList.style.transform = 'translateX(-10px)';
-    
-    setTimeout(() => {
-        renderTodos();
-        todoList.style.opacity = '1';
-        todoList.style.transform = 'translateX(0)';
-    }, 200);
-}
-
-function clearCompleted() {
-    const completedItems = document.querySelectorAll('.todo-item.completed');
-    
-    // Анимация удаления всех выполненных
-    completedItems.forEach((item, index) => {
-        setTimeout(() => {
-            item.classList.add('removing');
-        }, index * 100);
-    });
-    
-    setTimeout(() => {
-        todos = todos.filter(t => !t.completed);
-        saveTodos();
-        renderTodos();
-        
-        // Вибрация
-        if (tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('heavy');
+            setTimeout(() => {
+                this.todos = this.todos.filter(t => t.id !== id);
+                this.saveTodos();
+                this.render();
+                this.triggerHapticFeedback('medium');
+            }, this.config.ANIMATION_DURATION);
         }
-    }, completedItems.length * 100 + 400);
-}
-
-function saveTodos() {
-    localStorage.setItem('todos', JSON.stringify(todos));
-}
-
-function renderTodos() {
-    const todoList = document.getElementById('todoList');
-    const todoCount = document.getElementById('todoCount');
-    
-    // Фильтруем задачи
-    let filteredTodos = todos.filter(todo => todo.category === currentCategory);
-    if (currentFilter === 'active') {
-        filteredTodos = filteredTodos.filter(t => !t.completed);
-    } else if (currentFilter === 'completed') {
-        filteredTodos = filteredTodos.filter(t => t.completed);
     }
-    
-    // Обновляем счетчик
-    const activeCount = todos.filter(t => !t.completed && t.category === currentCategory).length;
-    todoCount.textContent = `Активных: ${activeCount}`;
-    
-    // Рендерим список
-    todoList.innerHTML = '';
-    
-    if (filteredTodos.length === 0) {
-        const emptyMessage = document.createElement('li');
-        emptyMessage.className = 'empty-state';
-        emptyMessage.innerHTML = `
-            <div style="text-align: center; padding: 40px 20px; opacity: 0.5;">
-                <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
-                <div>${getEmptyStateMessage()}</div>
-            </div>
-        `;
-        todoList.appendChild(emptyMessage);
-    } else {
-        filteredTodos.forEach((todo, index) => {
-            const li = document.createElement('li');
-            li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
-            li.setAttribute('data-todo-id', todo.id);
-            li.setAttribute('data-category', todo.category);
-            li.style.animationDelay = `${index * 0.1}s`;
-            
-            const categoryIcon = getCategoryIcon(todo.category);
-            
-            li.innerHTML = `
+
+    clearCompleted() {
+        const completedItems = document.querySelectorAll('.todo-item.completed');
+        
+        completedItems.forEach((item, index) => {
+            setTimeout(() => {
+                item.classList.add('removing');
+            }, index * 100);
+        });
+        
+        setTimeout(() => {
+            this.todos = this.todos.filter(t => !t.completed);
+            this.saveTodos();
+            this.render();
+            this.triggerHapticFeedback('heavy');
+        }, completedItems.length * 100 + this.config.ANIMATION_DURATION);
+    }
+
+    // Filtering and Categories
+    setFilter(filter) {
+        this.currentFilter = filter;
+        this.updateActiveButton('.filter-btn', event.target);
+        this.render();
+    }
+
+    setCategory(category) {
+        this.currentCategory = category;
+        this.updateActiveButton('.category-btn', event.target);
+        this.render();
+    }
+
+    updateActiveButton(selector, target) {
+        document.querySelectorAll(selector).forEach(btn => {
+            btn.classList.remove('active');
+        });
+        target.classList.add('active');
+    }
+
+    getFilteredTodos() {
+        let filtered = this.todos.filter(todo => todo.category === this.currentCategory);
+        
+        switch (this.currentFilter) {
+            case 'active':
+                return filtered.filter(t => !t.completed);
+            case 'completed':
+                return filtered.filter(t => t.completed);
+            default:
+                return filtered;
+        }
+    }
+
+    // Rendering
+    render() {
+        if (this.renderTimeout) clearTimeout(this.renderTimeout);
+        
+        this.renderTimeout = setTimeout(() => {
+            this.renderTodos();
+            this.updateStats();
+        }, this.config.DEBOUNCE_DELAY);
+    }
+
+    renderTodos() {
+        const todoList = document.getElementById('todoList');
+        if (!todoList) return;
+
+        const filteredTodos = this.getFilteredTodos();
+        
+        if (filteredTodos.length === 0) {
+            todoList.innerHTML = this.renderEmptyState();
+        } else {
+            todoList.innerHTML = this.renderTodoList(filteredTodos);
+        }
+    }
+
+    renderTodoList(todos) {
+        return todos.map((todo, index) => `
+            <li class="todo-item ${todo.completed ? 'completed' : ''}" 
+                data-todo-id="${todo.id}"
+                data-category="${todo.category}"
+                style="animation-delay: ${index * 0.05}s">
                 <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
-                     onclick="toggleTodo(${todo.id})"></div>
-                <span class="category-icon">${categoryIcon}</span>
-                <span class="todo-text">${escapeHtml(todo.text)}</span>
-                <button class="delete-btn" onclick="deleteTodo(${todo.id})">🗑️</button>
-            `;
-            
-            todoList.appendChild(li);
-        });
+                     onclick="app.toggleTodo(${todo.id})"
+                     aria-label="${todo.completed ? 'Отметить как невыполненную' : 'Отметить как выполненную'}">
+                </div>
+                <span class="category-icon">${this.getCategoryIcon(todo.category)}</span>
+                <span class="todo-text">${this.escapeHtml(todo.text)}</span>
+                <button class="delete-btn" onclick="app.deleteTodo(${todo.id})"
+                        aria-label="Удалить задачу">
+                    🗑️
+                </button>
+            </li>
+        `).join('');
     }
-}
 
-function getCategoryIcon(category) {
-    const icons = {
-        'work': '💼',
-        'personal': '🏠',
-        'shopping': '🛒',
-        'general': '📝'
-    };
-    return icons[category] || '📝';
-}
-
-function getEmptyStateMessage() {
-    if (currentFilter === 'completed') return 'Нет выполненных задач';
-    if (currentFilter === 'active') return 'Нет активных задач';
-    
-    const messages = {
-        'work': 'Нет рабочих задач',
-        'personal': 'Нет личных задач', 
-        'shopping': 'Нет списка покупок',
-        'general': 'Нет задач'
-    };
-    return messages[currentCategory] || 'Нет задач';
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Смена темы
-function changeTheme(theme) {
-    currentTheme = theme;
-    document.body.setAttribute('data-theme', theme);
-    localStorage.setItem('currentTheme', theme);
-    
-    // Анимация смены темы
-    document.body.style.opacity = '0.8';
-    setTimeout(() => {
-        document.body.style.opacity = '1';
-    }, 300);
-    
-    // Обновляем активную кнопку темы
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Вибрация
-    if (tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('soft');
+    renderEmptyState() {
+        const message = this.getEmptyStateMessage();
+        return `
+            <li class="empty-state">
+                <div class="empty-state-icon">${this.getEmptyStateIcon()}</div>
+                <div>${message}</div>
+            </li>
+        `;
     }
-}
 
-// Обработка Enter в поле ввода
-document.getElementById('todoInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        addTodo();
+    getEmptyStateMessage() {
+        if (this.currentFilter === 'completed') return 'Нет выполненных задач';
+        if (this.currentFilter === 'active') return 'Нет активных задач';
+        
+        const messages = {
+            'work': 'Нет рабочих задач',
+            'personal': 'Нет личных задач', 
+            'general': 'Нет задач'
+        };
+        return messages[this.currentCategory] || 'Нет задач';
     }
-});
 
-// Система уведомлений (остается без изменений)
-async function sendTelegramNotification(chatId, message) {
-    const botToken = 'YOUR_BOT_TOKEN';
-    if (!botToken || botToken === 'YOUR_BOT_TOKEN') {
-        console.log('Уведомление (для отправки нужен токен бота):', message);
-        return;
+    getEmptyStateIcon() {
+        const icons = {
+            'work': '💼',
+            'personal': '🏠',
+            'general': '📝'
+        };
+        return icons[this.currentCategory] || '📝';
     }
-    
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: message,
-                parse_mode: 'HTML'
-            })
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('Ошибка отправки уведомления:', error);
-    }
-}
 
-function sendCompletionNotification(todoText) {
-    const user = tg.initDataUnsafe?.user;
-    if (user) {
-        const message = `✅ Задача выполнена: <b>${todoText}</b>\n🎉 Так держать!`;
-        sendTelegramNotification(user.id, message);
+    getCategoryIcon(category) {
+        const icons = {
+            'work': '💼',
+            'personal': '🏠',
+            'general': '📝'
+        };
+        return icons[category] || '📝';
     }
-}
 
-// Аналитика и статистика (остается без изменений)
-const analytics = {
-    trackCompletion(todo) {
+    updateStats() {
+        const completed = this.todos.filter(t => t.completed).length;
+        const pending = this.todos.filter(t => !t.completed).length;
+        const efficiency = this.calculateEfficiency();
+
+        this.updateElementText('completedCount', completed);
+        this.updateElementText('pendingCount', pending);
+        this.updateElementText('completionRate', efficiency + '%');
+        this.updateElementText('todoCount', `Активных: ${pending}`);
+    }
+
+    updateElementText(id, text) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = text;
+    }
+
+    calculateEfficiency() {
+        const completed = this.todos.filter(t => t.completed).length;
+        const total = this.todos.length;
+        return total > 0 ? Math.round((completed / total) * 100) : 0;
+    }
+
+    // Analytics
+    analyticsTrackCompletion(todo) {
         const today = new Date().toDateString();
-        const completionData = JSON.parse(localStorage.getItem('completionData')) || {};
+        const completionData = this.loadCompletionData();
         
         if (!completionData[today]) {
-            completionData[today] = {
-                completed: 0,
-                created: 0,
-                totalTime: 0
-            };
+            completionData[today] = { completed: 0, created: 0, totalTime: 0 };
         }
         
         if (todo.completed && todo.completedAt) {
@@ -337,11 +360,27 @@ const analytics = {
             completionData[today].created++;
         }
         
-        localStorage.setItem('completionData', JSON.stringify(completionData));
-    },
-    
+        this.saveCompletionData(completionData);
+    }
+
+    loadCompletionData() {
+        try {
+            return JSON.parse(localStorage.getItem('completionData')) || {};
+        } catch {
+            return {};
+        }
+    }
+
+    saveCompletionData(data) {
+        try {
+            localStorage.setItem('completionData', JSON.stringify(data));
+        } catch (error) {
+            console.error('Error saving analytics:', error);
+        }
+    }
+
     getStatsForPeriod(days = 7) {
-        const completionData = JSON.parse(localStorage.getItem('completionData')) || {};
+        const completionData = this.loadCompletionData();
         const dates = Object.keys(completionData).sort().slice(-days);
         
         return {
@@ -349,65 +388,90 @@ const analytics = {
                 const d = new Date(date);
                 return `${d.getDate()}.${d.getMonth() + 1}`;
             }),
-            completed: dates.map(date => completionData[date].completed || 0),
-            created: dates.map(date => completionData[date].created || 0),
+            completed: dates.map(date => completionData[date]?.completed || 0),
+            created: dates.map(date => completionData[date]?.created || 0),
             averageTime: dates.map(date => {
                 const data = completionData[date];
-                return data.completed > 0 ? 
+                return data?.completed > 0 ? 
                     Math.round(data.totalTime / data.completed / 60000) : 0;
             })
         };
-    },
-    
-    calculateEfficiency() {
-        const completed = todos.filter(t => t.completed).length;
-        const total = todos.length;
-        return total > 0 ? Math.round((completed / total) * 100) : 0;
     }
-};
 
-// Функции для модального окна статистики (остаются без изменений)
-function showStats() {
-    document.getElementById('statsModal').style.display = 'block';
-    updateStats();
-    renderCharts();
-}
+    // Notifications
+    async sendTelegramNotification(chatId, message) {
+        const botToken = 'YOUR_BOT_TOKEN';
+        if (!botToken || botToken === 'YOUR_BOT_TOKEN') {
+            console.log('Notification:', message);
+            return;
+        }
+        
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: message,
+                    parse_mode: 'HTML'
+                })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Notification error:', error);
+        }
+    }
 
-function closeStats() {
-    document.getElementById('statsModal').style.display = 'none';
-}
+    sendCompletionNotification(todoText) {
+        const user = this.tg?.initDataUnsafe?.user;
+        if (user) {
+            const message = `✅ Задача выполнена: <b>${todoText}</b>\n🎉 Так держать!`;
+            this.sendTelegramNotification(user.id, message);
+        }
+    }
 
-function openTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
-    renderCharts();
-}
+    // Stats Modal
+    showStats() {
+        const modal = document.getElementById('statsModal');
+        if (modal) {
+            modal.style.display = 'block';
+            this.updateStats();
+            this.renderCharts();
+        }
+    }
 
-function updateStats() {
-    const completed = todos.filter(t => t.completed).length;
-    const pending = todos.filter(t => !t.completed).length;
-    const efficiency = analytics.calculateEfficiency();
-    
-    document.getElementById('completedCount').textContent = completed;
-    document.getElementById('pendingCount').textContent = pending;
-    document.getElementById('completionRate').textContent = efficiency + '%';
-}
+    closeStats() {
+        const modal = document.getElementById('statsModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
 
-function renderCharts() {
-    const weeklyStats = analytics.getStatsForPeriod(7);
-    const monthlyStats = analytics.getStatsForPeriod(30);
-    
-    // Графики остаются без изменений
-    const dailyCtx = document.getElementById('dailyChart');
-    if (dailyCtx) {
-        new Chart(dailyCtx, {
+    openTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const tabElement = document.getElementById(tabName);
+        if (tabElement) {
+            tabElement.classList.add('active');
+        }
+        
+        if (event?.target) {
+            event.target.classList.add('active');
+        }
+        
+        this.renderCharts();
+    }
+
+    renderCharts() {
+        const weeklyStats = this.getStatsForPeriod(7);
+        const monthlyStats = this.getStatsForPeriod(30);
+        
+        this.renderChart('dailyChart', {
             type: 'bar',
             data: {
                 labels: weeklyStats.labels,
@@ -424,16 +488,10 @@ function renderCharts() {
                     }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
-    }
-    
-    const weeklyCtx = document.getElementById('weeklyChart');
-    if (weeklyCtx) {
-        new Chart(weeklyCtx, {
+        
+        this.renderChart('weeklyChart', {
             type: 'line',
             data: {
                 labels: weeklyStats.labels,
@@ -446,16 +504,10 @@ function renderCharts() {
                     fill: true
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
-    }
-    
-    const monthlyCtx = document.getElementById('monthlyChart');
-    if (monthlyCtx) {
-        new Chart(monthlyCtx, {
+        
+        this.renderChart('monthlyChart', {
             type: 'bar',
             data: {
                 labels: monthlyStats.labels,
@@ -465,20 +517,64 @@ function renderCharts() {
                     backgroundColor: '#af52de'
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
+    }
+
+    renderChart(canvasId, config) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        // Destroy existing chart
+        if (this.charts[canvasId]) {
+            this.charts[canvasId].destroy();
+        }
+        
+        // Create new chart
+        this.charts[canvasId] = new Chart(canvas, config);
+    }
+
+    // Utilities
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    triggerHapticFeedback(type) {
+        if (this.tg?.HapticFeedback) {
+            this.tg.HapticFeedback.impactOccurred(type);
+        }
+    }
+
+    showError(message) {
+        if (this.tg) {
+            this.tg.showPopup({
+                title: 'Ошибка',
+                message: message,
+                buttons: [{ type: 'ok' }]
+            });
+        } else {
+            alert(message);
+        }
     }
 }
 
-// Инициализация основной кнопки Telegram
-tg.MainButton.setText('Сохранить всё');
-tg.MainButton.onClick(() => {
-    tg.showPopup({
-        title: 'Успех',
-        message: 'Все задачи сохранены локально!',
-        buttons: [{ type: 'ok' }]
-    });
+// Global functions for HTML attributes
+let app;
+
+document.addEventListener('DOMContentLoaded', () => {
+    app = new TodoApp();
 });
+
+function addTodo() {
+    app.addTodoFromInput();
+}
+
+function toggleTodo(id) {
+    app.toggleTodo(id);
+}
+
+function deleteTodo(id) {
+    app.deleteTodo(id);
+}
