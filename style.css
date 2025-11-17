@@ -4,11 +4,52 @@
     box-sizing: border-box;
 }
 
+:root {
+    --primary-color: #007aff;
+    --secondary-color: #f8f9fa;
+    --text-color: #000000;
+    --bg-color: #ffffff;
+    --accent-color: #34c759;
+    --danger-color: #ff3b30;
+    --border-radius: 16px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+    --primary-color: #0a84ff;
+    --secondary-color: #1c1c1e;
+    --text-color: #ffffff;
+    --bg-color: #000000;
+    --accent-color: #30d158;
+    --danger-color: #ff453a;
+    --shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+[data-theme="blue"] {
+    --primary-color: #5ac8fa;
+    --secondary-color: #e3f2fd;
+    --text-color: #1565c0;
+    --bg-color: #f0f8ff;
+    --accent-color: #4fc3f7;
+    --danger-color: #ef5350;
+}
+
+[data-theme="green"] {
+    --primary-color: #4caf50;
+    --secondary-color: #e8f5e8;
+    --text-color: #2e7d32;
+    --bg-color: #f9fdf9;
+    --accent-color: #66bb6a;
+    --danger-color: #f44336;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--tg-theme-bg-color, #ffffff);
-    color: var(--tg-theme-text-color, #000000);
+    background: var(--bg-color);
+    color: var(--text-color);
     min-height: 100vh;
+    transition: var(--transition);
 }
 
 .container {
@@ -17,14 +58,31 @@ body {
     padding: 20px;
 }
 
+/* Анимированный header */
 header {
     text-align: center;
     margin-bottom: 20px;
+    animation: slideDown 0.6s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 header h1 {
     font-size: 24px;
     margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .user-info {
@@ -32,59 +90,165 @@ header h1 {
     opacity: 0.7;
 }
 
+/* Селектор темы */
+.theme-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: center;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.theme-btn {
+    padding: 10px;
+    border: none;
+    border-radius: 50%;
+    background: var(--secondary-color);
+    cursor: pointer;
+    font-size: 16px;
+    transition: var(--transition);
+    transform: scale(1);
+}
+
+.theme-btn:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow);
+}
+
+.theme-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Добавление задач */
 .add-todo {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+    animation: slideUp 0.6s ease-out 0.2s both;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 #todoInput {
     flex: 1;
-    padding: 12px;
-    border: 1px solid var(--tg-theme-hint-color, #ccc);
-    border-radius: 10px;
-    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-    color: var(--tg-theme-text-color, #000000);
+    padding: 15px;
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    background: var(--secondary-color);
+    color: var(--text-color);
     font-size: 16px;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+#todoInput:focus {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 #todoInput::placeholder {
-    color: var(--tg-theme-hint-color, #999);
+    color: var(--text-color);
+    opacity: 0.5;
 }
 
 button {
-    padding: 12px 16px;
+    padding: 15px 18px;
     border: none;
-    border-radius: 10px;
-    background: var(--tg-theme-button-color, #007aff);
-    color: var(--tg-theme-button-text-color, #ffffff);
+    border-radius: var(--border-radius);
+    background: var(--primary-color);
+    color: var(--bg-color);
     cursor: pointer;
     font-size: 16px;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 button:active {
-    opacity: 0.8;
+    transform: translateY(0);
 }
 
-.filters {
+/* Категории */
+.category-selector {
     display: flex;
-    gap: 5px;
+    gap: 8px;
     margin-bottom: 20px;
     justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeIn 0.8s ease-out 0.4s both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.category-btn {
+    padding: 10px 15px;
+    font-size: 12px;
+    background: var(--secondary-color);
+    color: var(--text-color);
+    border: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.category-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+.category-btn:hover:not(.active) {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+/* Фильтры */
+.filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeIn 0.8s ease-out 0.6s both;
 }
 
 .filter-btn {
-    padding: 8px 12px;
+    padding: 10px 16px;
     font-size: 14px;
-    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-    color: var(--tg-theme-text-color, #000000);
+    background: var(--secondary-color);
+    color: var(--text-color);
+    transition: var(--transition);
 }
 
 .filter-btn.active {
-    background: var(--tg-theme-button-color, #007aff);
-    color: var(--tg-theme-button-text-color, #ffffff);
+    background: var(--primary-color);
+    color: var(--bg-color);
+    transform: scale(1.05);
 }
 
+.stats-btn {
+    background: var(--accent-color);
+    margin: 5px 0;
+}
+
+/* Список задач */
 .todo-list {
     list-style: none;
     margin-bottom: 20px;
@@ -93,18 +257,21 @@ button:active {
 .todo-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px;
-    margin-bottom: 8px;
-    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-    border-radius: 10px;
-    animation: slideIn 0.3s ease;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    animation: slideInRight 0.5s ease-out;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--primary-color);
 }
 
-@keyframes slideIn {
+@keyframes slideInRight {
     from {
         opacity: 0;
-        transform: translateX(-10px);
+        transform: translateX(-20px);
     }
     to {
         opacity: 1;
@@ -112,57 +279,284 @@ button:active {
     }
 }
 
+.todo-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
 .todo-item.completed {
-    opacity: 0.6;
+    opacity: 0.7;
+    transform: scale(0.98);
 }
 
 .todo-item.completed .todo-text {
     text-decoration: line-through;
 }
 
+/* Иконки категорий */
+.todo-item[data-category="work"] {
+    border-left-color: #ff9500;
+    background: linear-gradient(135deg, var(--secondary-color), rgba(255, 149, 0, 0.1));
+}
+
+.todo-item[data-category="personal"] {
+    border-left-color: #af52de;
+    background: linear-gradient(135deg, var(--secondary-color), rgba(175, 82, 222, 0.1));
+}
+
+.todo-item[data-category="shopping"] {
+    border-left-color: #34c759;
+    background: linear-gradient(135deg, var(--secondary-color), rgba(52, 199, 89, 0.1));
+}
+
+.todo-item[data-category="general"] {
+    border-left-color: #007aff;
+    background: linear-gradient(135deg, var(--secondary-color), rgba(0, 122, 255, 0.1));
+}
+
 .todo-checkbox {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    border: 2px solid var(--tg-theme-button-color, #007aff);
+    border: 2px solid var(--primary-color);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.todo-checkbox:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.2);
 }
 
 .todo-checkbox.checked {
-    background: var(--tg-theme-button-color, #007aff);
+    background: var(--primary-color);
+    transform: scale(1.1);
 }
 
 .todo-checkbox.checked::after {
     content: '✓';
     color: white;
     font-size: 12px;
+    font-weight: bold;
 }
 
 .todo-text {
     flex: 1;
     font-size: 16px;
+    transition: var(--transition);
+}
+
+.todo-item .category-icon {
+    font-size: 14px;
+    opacity: 0.7;
 }
 
 .delete-btn {
-    padding: 6px 10px;
-    background: #ff3b30;
+    padding: 8px 12px;
+    background: var(--danger-color);
     color: white;
     font-size: 12px;
+    opacity: 0.7;
+    transition: var(--transition);
 }
 
+.delete-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Статистика */
 .stats {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
     opacity: 0.7;
+    animation: fadeIn 0.8s ease-out 0.8s both;
 }
 
 .clear-btn {
-    padding: 8px 12px;
+    padding: 10px 15px;
     font-size: 12px;
-    background: #ff3b30;
+    background: var(--danger-color);
+}
+
+/* Модальное окно статистики */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    background: var(--bg-color);
+    margin: 5% auto;
+    padding: 25px;
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.close:hover {
+    color: var(--danger-color);
+    transform: scale(1.1);
+}
+
+.stats-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.tab-btn {
+    padding: 10px 16px;
+    font-size: 12px;
+    background: var(--secondary-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    color: var(--bg-color);
+    transform: scale(1.05);
+}
+
+.tab-content {
+    display: none;
+    height: 200px;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.stats-summary {
+    display: flex;
+    justify-content: space-around;
+    margin: 25px 0;
+    padding: 20px;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    animation: slideUp 0.6s ease-out;
+}
+
+.stat-item {
+    text-align: center;
+    transition: var(--transition);
+}
+
+.stat-item:hover {
+    transform: translateY(-3px);
+}
+
+.stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--primary-color);
+    transition: var(--transition);
+}
+
+.stat-label {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* Анимации для элементов при удалении */
+.todo-item.removing {
+    animation: slideOutLeft 0.4s ease-in forwards;
+}
+
+@keyframes slideOutLeft {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+}
+
+/* Анимация выполнения задачи */
+.todo-item.completing {
+    animation: completePulse 0.6s ease-out;
+}
+
+@keyframes completePulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px var(--accent-color);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Responsive дизайн */
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .category-selector {
+        gap: 5px;
+    }
+    
+    .category-btn {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+    
+    .filters {
+        gap: 5px;
+    }
+    
+    .filter-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
 }
